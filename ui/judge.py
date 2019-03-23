@@ -25,7 +25,6 @@ class Judge(ttk.Frame):
 		self.statusbox.grid(row = 2, column = 1)
 		self.lblSum.grid(row = 2, column = 2, sticky = tk.E, padx = 20)
 		self.btnPause.grid(row = 3, column = 1)
-		self.grid(row = 0, column = 0, sticky = 'nsew')
 
 	def __setitem__(self, key, item):
 		self.varJudges[key].set(str(item))
@@ -45,10 +44,30 @@ class Judge(ttk.Frame):
 	def update(self, step, photo, progress, total, drop, passed):
 		self.statusbar.update(step, photo, progress, total, drop, passed)
 		self.reset_score()
+		self.root.update()
 
 	def default(self):
 		self.lblSum.default()
 		self.statusbox.default()
+
+	@classmethod
+	def instance(cls, *args, **kwargs):
+		''' root, title, judges, pause'''
+		def dependencies(caller):
+			caller.root = kwargs['root']
+			caller.statusbar = tools.status_bar(caller)
+			caller.varJudges = [tk.StringVar(caller) for judge in kwargs['judges']]
+			caller.varSum = tk.StringVar(caller)
+			caller.lblJudges = ScorePanel(caller.varJudges, caller)
+			caller.lblSum = TotalLabel(caller.varSum, caller)
+			caller.info = InfoBox(kwargs['title'], caller)
+			caller.statusbox = StatusBox(caller)
+			caller.btnPause = ttk.Button(caller, text = 'Pause', command = lambda: kwargs['pause'](caller.btnPause))
+
+		view = Judge(dependencies, kwargs['root'])
+		view.grid(row = 0, column = 0, sticky = tk.NSEW)
+		kwargs['root'].update()
+		return view
 
 class ScorePanel(ttk.Frame):
 	def __init__(self, vars, *args, **kwargs):
@@ -148,20 +167,3 @@ class InfoBox(ttk.Frame):
 
 	def __load(self):
 		self.lblTitle.pack()
-
-def judge(root, title, stage, cur_candidate, judges, pause, remain, drop = 0):
-	def dependencies(judge_view):
-		judge_view.statusbar = tools.status_bar(judge_view)
-
-		judge_view.varJudges = [tk.StringVar(judge_view) for judge in judges]
-		judge_view.varSum = tk.StringVar(judge_view)
-
-		judge_view.lblJudges = ScorePanel(judge_view.varJudges, judge_view)
-		judge_view.lblSum = TotalLabel(judge_view.varSum, judge_view)
-	
-		judge_view.info = InfoBox(title, judge_view)
-		judge_view.statusbox = StatusBox(judge_view)
-
-		judge_view.btnPause = ttk.Button(judge_view, text = 'Pause', command = lambda: pause(btnPause))
-
-	return Judge(dependencies, root)

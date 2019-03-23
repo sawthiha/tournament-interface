@@ -19,7 +19,8 @@ def main(root):
 	judges = list(map(str, range(1, 3 + 1)))
 	pause = lambda caller: print('pause')
 	remain = 99
-	judge_view = judge.judge(root, title, stage, cur_candidate, judges, pause, remain)
+	judge_view = judge.judge(root, title, stage, cur_candidate, judges, pause, remain, False)
+	judge_view.statusbar.mode_judge_final()
 	judge_view[0] = 10
 	judge_view[1] = 10
 	judge_view[2] = 10

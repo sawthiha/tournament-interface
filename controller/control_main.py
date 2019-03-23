@@ -3,7 +3,6 @@ import controller.tools as tools
 import ui.tools as ui_tools
 
 def create(root):
-	
 	def create(caller):
 		title = caller.varTitle.get()
 		judges = caller.varJudges.get()
@@ -14,8 +13,8 @@ def create(root):
 		if photos <= 0:
 				caller.warn()
 				return
-		control.init_tournament(root, judge_list, title, judges, photos, candidates, step)
 		caller.destory()
+		control.init_tournament(root, judge_list, title, judges, photos, candidates, step)
 	
 	judge_list = tools.get_judges()
 
@@ -37,7 +36,7 @@ def create(root):
 def history(root):
 	pass
 
-def setting(root):
+def settings(root):
 	pass
 
 def about(root):

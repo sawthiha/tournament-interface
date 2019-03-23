@@ -8,6 +8,9 @@ main = config.config['MAIN']
 judge = config.config['JUDGE']
 score = config.config['SCORE']
 
+logo_url = config.from_root(main['logo_image'])
+background_url = config.from_root(main['background_image'])
+
 def style(root):
 	style = tk.ttk.Style(root)
 	style.theme_use(default['Ttk_Theme'])

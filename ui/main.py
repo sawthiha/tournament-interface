@@ -1,73 +1,38 @@
-import controller.control_main as control
-import config.ui_config as config
 import tkinter as tk
 import tkinter.ttk as ttk
+from PIL import Image, ImageTk
 
-class Main:
-	def __init__(self, root, header, content, footer, background, lblTitle, panBtns, btnCreate, btnHistory, btnSetting, btnAbout, lblNote):
-		self.root = root
-		self.header = header
-		self.content = content
-		self.footer = footer
-		self.background = background
-		self.lblTitle = lblTitle
-		self.panBtns = panBtns
-		self.btnCreate = btnCreate
-		self.btnHistory = btnHistory
-		self.btnSetting = btnSetting
-		self.btnAbout = btnAbout
-		self.lblNote = lblNote
+import config.ui_config as config
+#import controller.control_main as control
 
+class Main(tk.Canvas):
+	def __init__(self, dependencies, *args, **kwargs):
+		tk.Canvas.__init__(self, *args, **kwargs)
+		dependencies(self)
 		self.__config()
 		self.__load()
 
 	def __config(self):
-		self.header.config(borderwidth=1, relief='solid')
-		self.content.config(borderwidth=1, relief='solid')
-		self.footer.config(borderwidth=1, relief='solid')
-
-		self.lblTitle.config(font=('Arial', 24,'bold'))
-
-		self.panBtns.config(borderwidth=1, relief='solid')
-		self.btnCreate['style'] = 'Main.TButton'
-		self.btnHistory['style'] = 'Main.TButton'
-		self.btnSetting['style'] = 'Main.TButton'
-		self.btnAbout['style'] = 'Main.TButton'
+		pass
 
 	def __load(self):
-		self.header.pack(fill=tk.BOTH)
-		self.content.pack(fill=tk.BOTH, expand=True)
-		self.footer.pack(fill=tk.X)
-		self.lblTitle.pack(pady = 20, fill=tk.BOTH, expand=True)
-		self.panBtns.pack(side=tk.LEFT, fill=tk.Y)
-		self.btnCreate.pack(padx=40, pady=10, anchor='center')
-		self.btnHistory.pack(padx=40, pady=10, anchor='center')
-		self.btnSetting.pack(padx=40, pady=10, anchor='center')
-		self.btnAbout.pack(padx=40, pady=10, anchor='center')
-		self.lblNote.pack()
+		self.create_image(0, 0, image = self.bg_img, anchor = tk.NW)
+		self.btns.pack(side = tk.BOTTOM, fill = tk.X)
+		self.btnCreate.pack(side = tk.LEFT, fill = tk.X, expand = True)
+		self.btnHistory.pack(side = tk.LEFT, fill = tk.X, expand = True)
+		self.btnSettings.pack(side = tk.LEFT, fill = tk.X, expand = True)
+		self.btnAbout.pack(side = tk.LEFT, fill = tk.X, expand = True)
 
-def main(root):
-	layout = ttk.Frame(root, height = root.winfo_screenheight())
-	header = ttk.Frame(layout)	
-	content = ttk.Frame(layout)
-	footer = ttk.Frame(layout)
-
-	lblTitle = ttk.Label(header, text='The Upper Myanmar Photographics Society')
-	background = tk.PhotoImage(file="resource/logo.png")
-	
-	panBtns = ttk.Frame(content)
-
-	btnCreate = ttk.Button(panBtns, text='New Competition', command = lambda : control.create(root))
-	btnHistory = ttk.Button(panBtns, text='History')
-	btnSetting = ttk.Button(panBtns, text='Setting')
-	btnAbout = ttk.Button(panBtns, text='About us', command = lambda : control.about(root))
-
-	lblNote = ttk.Label(footer, text='Python Inside!')
-
-	layout.grid(row = 0, column = 0, sticky = 'nsew')
-	return Main(layout, header, content, footer, background, lblTitle, panBtns, btnCreate, btnHistory, btnSetting, btnAbout, lblNote)
-
-if __name__ == '__main__':
-	root = config.root()
-	main(root)
-	root.mainloop()
+	@classmethod
+	def instance(cls, root, *args, **kwargs):
+		def dependencies(caller):
+			screen_size = (root.winfo_screenwidth(), root.winfo_screenheight())
+			caller.bg_img = ImageTk.PhotoImage(image = Image.open(config.background_url).resize(screen_size, Image.BICUBIC))
+			caller.btns = ttk.Frame(caller)
+			caller.btnCreate = ttk.Button(caller.btns, text = 'New Competition', style = 'Main.TButton', command = lambda : kwargs['create'](root))
+			caller.btnHistory = ttk.Button(caller.btns, text = 'History', style = 'Main.TButton', command = lambda : kwargs['history'](root))
+			caller.btnSettings = ttk.Button(caller.btns, text = 'Settings', style = 'Main.TButton', command = lambda : kwargs['settings'](root))
+			caller.btnAbout = ttk.Button(caller.btns, text = 'About', style = 'Main.TButton', command = lambda : kwargs['about'](root))
+		view = cls(dependencies, root)
+		view.grid(row = 0, column = 0, sticky = tk.NSEW)
+		return view

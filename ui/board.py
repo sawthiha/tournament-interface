@@ -5,11 +5,14 @@ import ui.tools as tools
 import config.ui_config as config
 
 class ScoreBoard(ttk.Frame):
+	instance = None
+
 	def __init__(self, *args, **kwargs):
 		ttk.Frame.__init__(self, *args, **kwargs)
 
-	def destory(self):
-		self.destroy()
+	def destroy(self):
+		super().destroy()
+		ScoreBoard.instance = None
 
 	def config(self):
 		tools.resizeTableByParent(self, self.table, weight_y = 0.7)
@@ -52,6 +55,105 @@ class ScoreBoard(ttk.Frame):
 		self.highlights(highlights)
 		reset_statusbar(self.statusbar)
 
+	@classmethod
+	def board(cls, *args, **kwargs):
+		if ScoreBoard.instance:
+			return None
+		board = cls(kwargs['root'])
+		board.rowconfigure(1, weight = 1)
+		panel = ttk.Frame(board)
+
+		varTo = tk.IntVar(panel, value = kwargs['step_no'] + 1)
+		btnTo = ttk.Frame(panel)
+		btns = [ttk.Radiobutton(btnTo, text = str(val), variable = varTo, value = val) for val in range(int(kwargs['step_no']) + 1, 5)]
+		btns.append(ttk.Radiobutton(btnTo, text = 'Final', variable = varTo, value = 0))
+		for btn in btns:
+			btn.pack(padx = 5, side = tk.LEFT)
+		btnContinue = tk.Button(panel, text = 'Continue >')
+
+		panTable = ttk.Frame(board)
+		table = tools.table_cp(panTable, kwargs['data'])
+		table.show()
+		table.copyIndex()
+		table.moveColumns(names = ['ID'], pos = 'start')
+		
+		statusbar = tools.status_bar(board)
+		statusbar.update(kwargs['step'], 0, 0, kwargs['candidates'], kwargs['dropped'], kwargs['passed'])
+		statusbar.remove_all()
+		
+		board.statusbar = statusbar
+		board.panTable = panTable
+		board.table = table
+		board.panel = panel
+		board.btnTo = btnTo
+		board.varTo = varTo
+		board.btnContinue = btnContinue
+		
+		decor_step = kwargs['decor_step']
+
+		@decor_step
+		def onAction(step, data, candidates, passed, dropped, reset_statusbar, highlights = []):
+			board.update(step, data, candidates, passed, dropped, reset_statusbar, highlights)
+		
+		nav_pane = NavigationPane(board)
+		for step in kwargs['steps']:
+			nav_pane.add(step, lambda event: onAction(nav_pane.index(event.widget)))
+		board.nav_pane = nav_pane
+		board.config()
+		board.load()
+		
+		board.grid(row = 0, column = 0, sticky = 'nsew')
+
+		commands = kwargs['commands']
+
+		cmd_dict = {
+			tools.POP_PICK : lambda : commands[0](board),
+			tools.POP_BAN : lambda : commands[1](board),
+			tools.POP_EDIT : lambda : commands[2](board)
+		}
+
+		def popup_logic():
+			step_mask = kwargs['popup_mask'](board)
+			flag = sum([mask * item for mask, item in zip(step_mask, cmd_dict.keys())])
+			return flag
+
+		menu = tools.popupmenu(board.table, popup_logic, cmd_dict)
+		ScoreBoard.instance = board
+		return board
+
+	@classmethod
+	def step(cls, *args, **kwargs):
+		try:
+			board = cls.board(*args, **kwargs)
+			board.highlights(kwargs['highlights'])
+			board.statusbar.mode_score()
+			board.btnContinue.config(command = lambda: kwargs['cont'](board))
+		finally:
+			return board
+
+	@classmethod
+	def tiebreaker(cls, *args, **kwargs):
+		try:
+			board = cls.board(*args, **kwargs)
+			board.highlights(kwargs['highlights'])
+			board.statusbar.mode_final()
+			board.btnTo.pack_forget()
+			board.varTo.set(0)
+			board.btnContinue.config(command = lambda: kwargs['cont'](board))
+		finally:
+			return board
+
+	@classmethod
+	def result(cls, *args, **kwargs):
+		try:
+			board = cls.board(*args, **kwargs)
+			board.statusbar.mode_final()
+			board.btnTo.pack_forget()
+			board.btnContinue.config(command = lambda: kwargs['cont'](board))
+			board.table.bind('<Double-Button-1>', lambda event : kwargs['dbl_click'](board))
+		finally:
+			return board
+
 class Tag(ttk.Button):
 	def __init__(self, *args, **kwargs):
 		ttk.Button.__init__(self, *args, **kwargs, style = 'board.tag.TButton')
@@ -68,6 +170,7 @@ class NavigationPane(ttk.Frame):
 		self.tags = []
 		self.__config()
 		self.__load()
+		
 
 	def __config(self):
 		pass
@@ -83,112 +186,3 @@ class NavigationPane(ttk.Frame):
 
 	def index(self, tag):
 		return self.tags.index(tag)
-
-def decor_score(func):
-	def wrapper(root, steps, decor_step, data, step, step_no, candidates, passed, drop, cont, pick, ban, highlights = []):
-		step_no = int(step_no)
-		board = ScoreBoard(root)
-		board.rowconfigure(1, weight = 1)
-		panel = ttk.Frame(board)
-
-		varTo = tk.IntVar(panel, value = step_no + 1)
-		btnTo = ttk.Frame(panel)
-		btns = [ttk.Radiobutton(btnTo, text = str(val), variable = varTo, value = val) for val in range(step_no + 1, 5)]
-		btns.append(ttk.Radiobutton(btnTo, text = 'Final', variable = varTo, value = 0))
-		for btn in btns:
-			btn.pack(padx = 5, side = tk.LEFT)
-		btnContinue = tk.Button(panel, text = 'Continue >')
-
-		panTable = ttk.Frame(board)
-		table = tools.table_cp(panTable, data)
-		table.show()
-		table.copyIndex()
-		table.moveColumns(names = ['ID'], pos = 'start')
-		
-		statusbar = tools.status_bar(board)
-		statusbar.update(step, 0, 0, candidates, drop, passed)
-		statusbar.remove_all()
-		
-		board.statusbar = statusbar
-		board.panTable = panTable
-		board.table = table
-		board.panel = panel
-		board.btnTo = btnTo
-		board.varTo = varTo
-		board.btnContinue = btnContinue
-		
-		@decor_step
-		def onAction(step, data, candidates, passed, dropped, reset_statusbar, highlights = []):
-			board.update(step, data, candidates, passed, dropped, reset_statusbar, highlights)
-		
-		nav_pane = NavigationPane(board)
-		for step in steps:
-			nav_pane.add(step, lambda event: onAction(nav_pane.index(event.widget)))
-		board.nav_pane = nav_pane
-		board.config()
-		board.load()
-		
-		func(board, cont, highlights)
-		board.grid(row = 0, column = 0, sticky = 'nsew')
-
-		cmd_dict = {
-			tools.POP_BAN : lambda : ban(board),
-			tools.POP_PICK : lambda : pick(board),
-			tools.POP_EDIT : lambda : print('Edit')
-		}
-
-		menu = tools.popupmenu(board.table, )
-		menu.add_command(label = 'Pick', command = lambda: pick(board))
-		menu.add_command(label = 'Ban', command = lambda : ban(board))
-		
-		return board
-	return wrapper
-
-@decor_score
-def score(board, cont, highlights):
-	board.highlights(highlights)
-	board.statusbar.mode_score()
-	board.btnContinue.config(command = lambda: cont(board))
-	return board
-
-@decor_score
-def tiebreaker(board, cont, highlights):
-	board.highlights(highlights)
-	board.statusbar.mode_final()
-	board.btnTo.pack_forget()
-	board.varTo.set(0)
-	board.btnContinue.config(command = lambda: cont(board))
-	return board
-
-def decor_entry(func):
-	def wrapper(root, steps, decor_step, data, step, step_no, candidates, passed, drop, cont, pick, ban, decor_save, logic, highlights = []):
-		caller = func(root, steps, decor_step, data, step, step_no, candidates, passed, drop, cont, pick, ban, highlights)
-		tagbar = tools.TagBar(caller.root)
-		varName = tk.StringVar(caller.root)
-		panName = ttk.Frame(caller.root)
-		txtName = tools.AutoEntry(logic, panName, textvariable = varName)
-
-		@decor_save
-		def submit(candidate):
-			tagbar.add(candidate, limit = len(data))
-
-		btnSubmit = ttk.Button(panName, text = 'Submit', command = lambda: submit(caller))
-		caller.tagbar = tagbar
-		caller.panName = panName
-		caller.txtName = txtName
-		caller.varName = varName
-		caller.btnSubmit = btnSubmit
-
-		tagbar.grid(row = 4, column = 1)
-		panName.grid(row = 5, column = 1)
-		txtName.pack(side = tk.LEFT)
-		btnSubmit.pack(side = tk.LEFT)
-		return caller
-	return wrapper
-
-@decor_score
-def result(board, cont, highlights):
-	board.statusbar.mode_final()
-	board.btnTo.pack_forget()
-	board.btnContinue.pack_forget()
-	return board
