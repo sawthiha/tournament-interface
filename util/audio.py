@@ -46,6 +46,16 @@ class Sound:
 		url = config.STEP
 		self._impl.play(url)
 
+	@classmethod
+	def instance(cls):
+		if PLATFORM.startswith('win'):
+			impl = WinSoundImpl()
+		elif PLATFORM.startswith('linux'):
+			impl = LinSoundIml()
+		else:
+			impl = OSXSoundImpl()
+		return cls(impl)
+
 class WinSoundImpl:
 	def __init__(self):
 		self.sapi = wincl.Dispatch("SAPI.SpVoice")
@@ -99,13 +109,4 @@ class OSXSoundImpl:
 	def tts(self, text):
 		raise NotImplementedError()
 
-def sound():
-	if PLATFORM.startswith('win'):
-		impl = WinSoundImpl()
-	elif PLATFORM.startswith('linux'):
-		impl = LinSoundIml()
-	else:
-		impl = OSXSoundImpl()
-	return Sound(impl)
-
-AUDIO = sound()
+AUDIO = Sound.instance()
